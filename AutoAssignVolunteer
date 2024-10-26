@@ -1,0 +1,13 @@
+trigger AutoAssignVolunteer on Food_Donation__c (before insert, before update) {
+    List<Volunteer__c> availableVolunteers = [SELECT Id, Location__c FROM Volunteer__c WHERE Status__c = 'Available' LIMIT 1];
+
+    if (availableVolunteers.size() > 0) {
+        for (Food_Donation__c donation : Trigger.new) {
+            // Assign a volunteer only if it's a new donation or status is changed to Pending
+            if (donation.Status__c == 'Pending' && donation.Volunteer__c == null) {
+                donation.Volunteer__c = availableVolunteers[0].Id;
+                donation.Status__c = 'Assigned';
+            }
+        }
+    }
+}
