@@ -1,0 +1,14 @@
+trigger NotifyDonorOnDelivery on Food_Donation__c (after update) {
+    Set<Id> donorIds = new Set<Id>();
+
+    for (Food_Donation__c donation : Trigger.new) {
+        if (donation.Status__c == 'Delivered') {
+            donorIds.add(donation.Bestower__c);
+        }
+    }
+
+    if (!donorIds.isEmpty()) {
+        List<Bestower__c> donors = [SELECT Id, Contributor_Email__c FROM Bestower__c WHERE Id IN :donorIds];
+        FoodDonationHelper.notifyDonors(donors);
+    }
+}
