@@ -1,0 +1,148 @@
+@isTest
+public class FoodDonationTriggerTest {
+
+    // Helper method to create a test donor
+    private static Bestower__c createTestDonor() {
+        Bestower__c donor = new Bestower__c(
+            Name = 'Test Donor',
+            Contributor_email__c = 'donor@test.com'
+        );
+        insert donor;
+        return donor;
+    }
+
+    // Helper method to create a test volunteer
+    private static Volunteer__c createTestVolunteer(Boolean isAvailable) {
+        Volunteer__c volunteer = new Volunteer__c(
+            Name = 'Test Volunteer',
+            Volunteer_email__c = 'volunteer@test.com',
+            Status__c = isAvailable ? 'Available' : 'Unavailable'
+        );
+        insert volunteer;
+        return volunteer;
+    }
+
+    // Helper method to create a test food donation
+    private static Food_Donation__c createTestDonation(Id donorId) {
+        Food_Donation__c donation = new Food_Donation__c(
+            Bestower__c = donorId,
+            Status__c = 'Pending'
+        );
+        insert donation;
+        return donation;
+    }
+
+    @isTest
+    static void testAutoAssignVolunteer() {
+        // Setup: Create a test donor and available volunteer
+        Bestower__c donor = createTestDonor();
+        Volunteer__c volunteer = createTestVolunteer(true);
+
+        // Exercise: Create a new food donation
+        Food_Donation__c donation = createTestDonation(donor.Id);
+
+        // Verify: The volunteer should be assigned
+        Food_Donation__c insertedDonation = [SELECT Id, Volunteer__c, Status__c FROM Food_Donation__c WHERE Id = :donation.Id];
+        System.assertNotEquals(null, insertedDonation.Volunteer__c, 'Volunteer should be assigned');
+        System.assertEquals('Assigned', insertedDonation.Status__c, 'Status should be Assigned');
+    }
+
+    @isTest
+    static void testNotifyVolunteerOnAssignment() {
+        // Setup: Create a test donor and available volunteer
+        Bestower__c donor = createTestDonor();
+        Volunteer__c volunteer = createTestVolunteer(true);
+
+        // Exercise: Create a new food donation and assign a volunteer
+        Food_Donation__c donation = createTestDonation(donor.Id);
+        donation.Status__c = 'Assigned';
+        donation.Volunteer__c = volunteer.Id;
+        update donation;
+
+        // Verify: The volunteer should receive a notification (simulated by calling the helper class)
+        Test.startTest();
+        FoodDonationHelper.notifyVolunteers(new List<Volunteer__c>{ volunteer });
+        Test.stopTest();
+
+        // Normally, you'd check the email logs or verify that the email was sent. For now, just ensure no errors.
+    }
+
+    @isTest
+    static void testNotifyDonorOnDelivery() {
+        // Setup: Create a test donor and available volunteer
+        Bestower__c donor = createTestDonor();
+        Volunteer__c volunteer = createTestVolunteer(true);
+
+        // Exercise: Create a new food donation and mark it as delivered
+        Food_Donation__c donation = createTestDonation(donor.Id);
+        donation.Status__c = 'Delivered';
+        update donation;
+
+        // Verify: The donor should receive a notification (simulated by calling the helper class)
+        Test.startTest();
+        FoodDonationHelper.notifyDonors(new List<Bestower__c>{ donor });
+        Test.stopTest();
+
+        // Normally, you'd check the email logs or verify that the email was sent. For now, just ensure no errors.
+    }
+
+    @isTest
+    static void testAutoCloseDonationRecord() {
+        // Setup: Create a test donor
+        Bestower__c donor = createTestDonor();
+
+        // Exercise: Create a new food donation, mark it as delivered and set the delivery date to 48 hours ago
+        Food_Donation__c donation = createTestDonation(donor.Id);
+        donation.Status__c = 'Delivered';
+        donation.Delivery_Date__c = DateTime.now().addDays(-2); // 48 hours ago
+        donation.Closed__c = false;
+        update donation;
+
+        // Verify: The donation should be auto-closed after 48 hours
+        Food_Donation__c updatedDonation = [SELECT Closed__c FROM Food_Donation__c WHERE Id = :donation.Id];
+        System.assertEquals(true, updatedDonation.Closed__c, 'Donation should be marked as closed after 48 hours');
+    }
+
+    @isTest
+    static void testReassignVolunteer() {
+        // Setup: Create a test donor and two volunteers
+        Bestower__c donor = createTestDonor();
+        Volunteer__c volunteer1 = createTestVolunteer(false); // Unavailable
+        Volunteer__c volunteer2 = createTestVolunteer(true);  // Available
+
+        // Exercise: Create a new food donation and assign the unavailable volunteer
+        Food_Donation__c donation = createTestDonation(donor.Id);
+        donation.Volunteer__c = volunteer1.Id;
+        donation.Status__c = 'Assigned';
+        donation.Acceptance_Status__c = 'Pending'; // Unaccepted
+        update donation;
+
+        // Reassign the volunteer
+        Test.startTest();
+        update donation; // Trigger will fire here and reassign to volunteer2
+        Test.stopTest();
+
+        // Verify: The volunteer should be reassigned
+        Food_Donation__c updatedDonation = [SELECT Volunteer__c FROM Food_Donation__c WHERE Id = :donation.Id];
+        System.assertEquals(volunteer2.Id, updatedDonation.Volunteer__c, 'Volunteer should be reassigned to another available volunteer');
+    }
+
+    @isTest
+    static void testFoodDonationHelper() {
+        // Setup: Create a test donor and volunteer
+        Bestower__c donor = createTestDonor();
+        Volunteer__c volunteer = createTestVolunteer(true);
+
+        // Verify notifyVolunteers method
+        Test.startTest();
+        FoodDonationHelper.notifyVolunteers(new List<Volunteer__c>{ volunteer });
+        Test.stopTest();
+
+        // Verify notifyDonors method
+        Test.startTest();
+        FoodDonationHelper.notifyDonors(new List<Bestower__c>{ donor });
+        Test.stopTest();
+
+        // Normally, you'd check email logs to ensure emails were sent, but this will ensure no errors are thrown.
+    }
+}
