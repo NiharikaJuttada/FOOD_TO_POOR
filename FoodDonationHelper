@@ -1,0 +1,40 @@
+public class FoodDonationHelper {
+
+    // Method to notify volunteers via email
+    public static void notifyVolunteers(List<Volunteer__c> volunteers) {
+        List<Messaging.SingleEmailMessage> emails = new List<Messaging.SingleEmailMessage>();
+
+        for (Volunteer__c volunteer : volunteers) {
+            if (volunteer.Volunteer_email__c != null) {
+                Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
+                email.setToAddresses(new String[] {volunteer.Volunteer_email__c});
+                email.setSubject('New Food Donation Assignment');
+                email.setPlainTextBody('You have been assigned to a new food donation. Please check Salesforce for details.');
+                emails.add(email);
+            }
+        }
+
+        if (!emails.isEmpty()) {
+            Messaging.sendEmail(emails);
+        }
+    }
+
+    // Method to notify donors via email
+    public static void notifyDonors(List<Bestower__c> donors) {
+        List<Messaging.SingleEmailMessage> emails = new List<Messaging.SingleEmailMessage>();
+
+        for (Bestower__c donor : donors) {
+            if (donor.Contributor_Email__c != null) {
+                Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
+                email.setToAddresses(new String[] {donor.Contributor_Email__c});
+                email.setSubject('Your Food Donation Has Been Delivered');
+                email.setPlainTextBody('Thank you for your generous donation! The food has been successfully delivered.');
+                emails.add(email);
+            }
+        }
+
+        if (!emails.isEmpty()) {
+            Messaging.sendEmail(emails);
+        }
+    }
+}
