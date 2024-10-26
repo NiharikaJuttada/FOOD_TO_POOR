@@ -1,0 +1,14 @@
+trigger NotifyVolunteerOnAssignment on Food_Donation__c (after insert, after update) {
+    Set<Id> volunteerIds = new Set<Id>();
+
+    for (Food_Donation__c donation : Trigger.new) {
+        if (donation.Volunteer__c != null && donation.Status__c == 'Assigned') {
+            volunteerIds.add(donation.Volunteer__c);
+        }
+    }
+
+    if (!volunteerIds.isEmpty()) {
+        List<Volunteer__c> assignedVolunteers = [SELECT Id, Volunteer_email__c FROM Volunteer__c WHERE Id IN :volunteerIds];
+        FoodDonationHelper.notifyVolunteers(assignedVolunteers);
+    }
+}
