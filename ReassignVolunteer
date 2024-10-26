@@ -1,0 +1,9 @@
+trigger ReassignVolunteer on Food_Donation__c (before update) {
+    List<Volunteer__c> availableVolunteers = [SELECT Id FROM Volunteer__c WHERE Status__c = 'Available' LIMIT 1];
+
+    for (Food_Donation__c donation : Trigger.new) {
+        if (donation.Status__c == 'Assigned' && donation.Acceptance_Status__c == 'Pending' && availableVolunteers.size() > 0) {
+            donation.Volunteer__c = availableVolunteers[0].Id;
+        }
+    }
+}
